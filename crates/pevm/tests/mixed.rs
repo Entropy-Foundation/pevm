@@ -1,9 +1,9 @@
 //! Test raw transfers -- A block with random raw transfers, ERC-20 transfers, and Uniswap swaps.
 
+use alloy_primitives::{Address, U256};
 use pevm::chain::PevmEthereum;
-use pevm::{Bytecodes, ChainState, EvmAccount, InMemoryStorage};
+use pevm::{Bytecodes, ChainState, EvmAccount, InMemoryStorage, TransactTo, TxEnv};
 use rand::random;
-use revm::primitives::{env::TxEnv, Address, TransactTo, U256};
 use std::sync::Arc;
 
 pub mod common;
@@ -35,7 +35,7 @@ fn mixed_block() {
                         transact_to: TransactTo::Call(address), // TODO: Randomize for tighter test
                         value: U256::from(1),
                         gas_limit: common::RAW_TRANSFER_GAS_LIMIT,
-                        gas_price: U256::from(1),
+                        gas_price: 1,
                         ..TxEnv::default()
                     });
                 }

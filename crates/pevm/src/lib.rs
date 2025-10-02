@@ -218,6 +218,7 @@ pub mod chain;
 mod compat;
 mod mv_memory;
 mod pevm;
+mod tx_env;
 pub use pevm::{execute_revm_sequential, Pevm, PevmError, PevmResult};
 mod scheduler;
 mod storage;
@@ -226,6 +227,7 @@ pub use storage::{
     Storage, StorageWrapper,
 };
 mod vm;
+pub use tx_env::{TransactTo, TxEnv};
 pub use vm::{ExecutionError, PevmTxExecutionResult};
 
 #[cfg(feature = "rpc-storage")]

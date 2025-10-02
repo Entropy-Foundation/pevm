@@ -3,8 +3,7 @@
 
 use alloy_primitives::{Address, U256};
 use pevm::chain::PevmEthereum;
-use pevm::InMemoryStorage;
-use revm::primitives::{TransactTo, TxEnv};
+use pevm::{InMemoryStorage, TransactTo, TxEnv};
 
 pub mod common;
 
@@ -30,7 +29,7 @@ fn one_tx_revm_block() {
             caller: Address::ZERO,
             transact_to: TransactTo::Call(Address::ZERO),
             value: U256::from(1),
-            gas_price: U256::from(1),
+            gas_price: 1,
             ..TxEnv::default()
         }],
     );

@@ -1,10 +1,11 @@
 //! Tests for the beneficiary account, especially for the lazy update of its balance to avoid
 //! "implicit" dependency among consecutive transactions.
 
+use alloy_primitives::{Address, U256};
 use pevm::chain::PevmEthereum;
-use pevm::InMemoryStorage;
+use pevm::{InMemoryStorage, TransactTo, TxEnv};
 use rand::random;
-use revm::primitives::{alloy_primitives::U160, env::TxEnv, Address, TransactTo, U256};
+use revm::primitives::alloy_primitives::U160;
 
 pub mod common;
 
@@ -29,7 +30,7 @@ fn test_beneficiary(get_address: fn(usize) -> Address) {
                     caller: address,
                     transact_to: TransactTo::Call(address),
                     value: U256::from(1),
-                    gas_price: U256::from(1),
+                    gas_price: 1,
                     ..TxEnv::default()
                 }
             })

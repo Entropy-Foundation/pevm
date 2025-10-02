@@ -12,21 +12,21 @@
 use pevm::chain::PevmEthereum;
 use pevm::{
     Bytecodes, ChainState, EvmAccount, EvmCode, InMemoryStorage, Pevm, PevmError,
-    PevmTxExecutionResult,
+    PevmTxExecutionResult, TransactTo, TxEnv,
 };
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use revm::db::PlainAccount;
+use revm::context::BlockEnv;
+use revm::context_interface::block::{calc_excess_blob_gas, BlobExcessGasAndPrice};
+use revm::context_interface::result::InvalidTransaction;
+use revm::database::PlainAccount;
 use revm::primitives::ruint::ParseError;
-use revm::primitives::InvalidTransaction;
-use revm::primitives::{
-    calc_excess_blob_gas, AccountInfo, BlobExcessGasAndPrice, BlockEnv, Bytecode, SpecId,
-    TransactTo, TxEnv, KECCAK_EMPTY, U256,
-};
-use revme::cmd::statetest::models::{Env, SpecName, Test, TestSuite, TestUnit, TransactionParts};
+use revm::primitives::{hardfork::SpecId, KECCAK_EMPTY, U256};
+use revm::state::{AccountInfo, Bytecode};
 use revme::cmd::statetest::{
     merkle_trie::{log_rlp_hash, state_merkle_trie_root},
     utils::recover_address,
 };
+use statetest_types::{Env, SpecName, Test, TestSuite, TestUnit, TransactionParts};
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -38,11 +38,11 @@ pub mod common;
 
 fn build_block_env(env: &Env, spec_id: SpecId) -> BlockEnv {
     BlockEnv {
-        number: env.current_number,
-        coinbase: env.current_coinbase,
-        timestamp: env.current_timestamp,
-        gas_limit: env.current_gas_limit,
-        basefee: env.current_base_fee.unwrap_or_default(),
+        number: env.current_number.saturating_to(),
+        beneficiary: env.current_coinbase,
+        timestamp: env.current_timestamp.saturating_to(),
+        gas_limit: env.current_gas_limit.saturating_to(),
+        basefee: env.current_base_fee.unwrap_or_default().saturating_to(),
         difficulty: env.current_difficulty,
         prevrandao: env.current_random,
         blob_excess_gas_and_price: if let Some(current_excess_blob_gas) =
@@ -73,16 +73,45 @@ fn build_block_env(env: &Env, spec_id: SpecId) -> BlockEnv {
 }
 
 fn build_tx_env(path: &Path, tx: &TransactionParts, test: &Test) -> Result<TxEnv, ParseError> {
+    let caller = if let Some(address) = tx.sender {
+        address
+    } else if let Some(address) = recover_address(tx.secret_key.as_slice()) {
+        address
+    } else {
+        panic!("Failed to parse caller for {path:?}");
+    };
+
+    let access_list = tx
+        .access_lists
+        .get(test.indexes.data)
+        .and_then(Option::as_deref)
+        .cloned()
+        .map(Into::into)
+        .unwrap_or_default();
+
+    let authorization_list = tx
+        .authorization_list
+        .clone()
+        .unwrap_or_default()
+        .into_iter()
+        .map(Into::into)
+        .collect();
+
+    let tx_type = tx
+        .tx_type(test.indexes.data)
+        .map(u8::from)
+        .unwrap_or_default();
+
     Ok(TxEnv {
-        caller: if let Some(address) = tx.sender {
-            address
-        } else if let Some(address) = recover_address(tx.secret_key.as_slice()) {
-            address
-        } else {
-            panic!("Failed to parse caller for {path:?}");
-        },
+        tx_type,
+        caller,
         gas_limit: tx.gas_limit[test.indexes.gas].saturating_to(),
-        gas_price: tx.gas_price.or(tx.max_fee_per_gas).unwrap_or_default(),
+        gas_price: tx
+            .gas_price
+            .or(tx.max_fee_per_gas)
+            .unwrap_or_default()
+            .saturating_to(),
+        gas_priority_fee: tx.max_priority_fee_per_gas.map(|fee| fee.saturating_to()),
         transact_to: match tx.to {
             Some(address) => TransactTo::Call(address),
             None => TransactTo::Create,
@@ -91,18 +120,12 @@ fn build_tx_env(path: &Path, tx: &TransactionParts, test: &Test) -> Result<TxEnv
         data: tx.data[test.indexes.data].clone(),
         nonce: Some(tx.nonce.saturating_to()),
         chain_id: Some(1), // Ethereum mainnet
-        access_list: tx
-            .access_lists
-            .get(test.indexes.data)
-            .and_then(Option::as_deref)
-            .cloned()
-            .unwrap_or_default(),
-        gas_priority_fee: tx.max_priority_fee_per_gas,
-        blob_hashes: tx.blob_versioned_hashes.clone(),
-        max_fee_per_blob_gas: tx.max_fee_per_blob_gas,
-        authorization_list: test.eip7702_authorization_list().unwrap(),
+        access_list,
+        blob_versioned_hashes: tx.blob_versioned_hashes.clone(),
+        max_fee_per_blob_gas: tx.max_fee_per_blob_gas.map(|fee| fee.saturating_to()),
+        authorization_list,
         #[cfg(feature = "optimism")]
-        optimism: revm::primitives::OptimismFields::default(),
+        optimism: Default::default(),
     })
 }
 
@@ -180,7 +203,7 @@ fn run_test_unit(path: &Path, unit: TestUnit) {
                         "TR_TipGtFeeCap" => error == InvalidTransaction::PriorityFeeGreaterThanMaxFee,
 
                         "TR_NoFundsOrGas" | "IntrinsicGas" | "TR_IntrinsicGas" | "TransactionException.INTRINSIC_GAS_TOO_LOW" =>
-                            error == InvalidTransaction::CallGasCostMoreThanGasLimit,
+                            matches!(error, InvalidTransaction::CallGasCostMoreThanGasLimit { .. }),
                         "TR_FeeCapLessThanBlocks" | "TransactionException.INSUFFICIENT_MAX_FEE_PER_GAS" => error == InvalidTransaction::GasPriceLessThanBasefee,
                         "TR_NoFunds" | "TransactionException.INSUFFICIENT_ACCOUNT_FUNDS" => matches!(error, InvalidTransaction::LackOfFundForMaxFee { .. }),
                         "TR_EMPTYBLOB" | "TransactionException.TYPE_3_TX_ZERO_BLOBS" => error == InvalidTransaction::EmptyBlobs,

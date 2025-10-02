@@ -1,7 +1,10 @@
 use crate::common::storage::{from_address, from_indices, from_short_string, StorageBuilder};
 use pevm::{BuildSuffixHasher, EvmAccount};
-use revm::primitives::{
-    fixed_bytes, hex::FromHex, ruint::UintTryFrom, Address, Bytecode, Bytes, HashMap, B256, U256,
+use revm::{
+    bytecode::Bytecode,
+    primitives::{
+        fixed_bytes, hex::FromHex, ruint::UintTryFrom, Address, Bytes, HashMap, B256, U256,
+    },
 };
 use rustc_hash::FxBuildHasher;
 

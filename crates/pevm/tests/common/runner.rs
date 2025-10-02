@@ -2,9 +2,12 @@ use alloy_primitives::Bloom;
 use alloy_rpc_types_eth::Block;
 use pevm::{
     chain::{CalculateReceiptRootError, PevmChain},
-    EvmAccount, Pevm, Storage,
+    EvmAccount, Pevm, Storage, TxEnv,
 };
-use revm::primitives::{alloy_primitives::U160, Address, BlockEnv, SpecId, TxEnv, U256};
+use revm::{
+    context::BlockEnv,
+    primitives::{alloy_primitives::U160, hardfork::SpecId, Address, U256},
+};
 use std::{num::NonZeroUsize, thread};
 
 /// Mock an account from an integer index that is used as the address.
@@ -29,23 +32,29 @@ where
     S: Storage + Send + Sync,
 {
     let concurrency_level = thread::available_parallelism().unwrap_or(NonZeroUsize::MIN);
-    assert_eq!(
-        pevm::execute_revm_sequential(
-            chain,
-            &storage,
-            SpecId::LATEST,
-            BlockEnv::default(),
-            txs.clone(),
-        ),
-        Pevm::default().execute_revm_parallel(
-            chain,
-            &storage,
-            SpecId::LATEST,
-            BlockEnv::default(),
-            txs,
-            concurrency_level,
-        ),
+    let sequential = pevm::execute_revm_sequential(
+        chain,
+        &storage,
+        SpecId::LATEST,
+        BlockEnv::default(),
+        txs.clone(),
     );
+    let parallel = Pevm::default().execute_revm_parallel(
+        chain,
+        &storage,
+        SpecId::LATEST,
+        BlockEnv::default(),
+        txs,
+        concurrency_level,
+    );
+
+    match (&sequential, &parallel) {
+        (Ok(seq), Ok(par)) => assert_eq!(seq, par),
+        (Err(seq_err), Err(par_err)) => assert_eq!(seq_err.to_string(), par_err.to_string()),
+        _ => panic!(
+            "Mismatched sequential/parallel results:\nsequential: {sequential:?}\nparallel: {parallel:?}"
+        ),
+    }
 }
 
 /// Execute an Alloy block sequentially & with pevm and assert that

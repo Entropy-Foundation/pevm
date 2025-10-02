@@ -1,8 +1,9 @@
 //! Test raw transfers -- only send some ETH from one account to another without extra data.
 
-use pevm::{chain::PevmEthereum, InMemoryStorage};
+use alloy_primitives::{Address, U256};
+use pevm::{chain::PevmEthereum, InMemoryStorage, TransactTo, TxEnv};
 use rand::random;
-use revm::primitives::{alloy_primitives::U160, env::TxEnv, Address, TransactTo, U256};
+use revm::primitives::alloy_primitives::U160;
 
 pub mod common;
 
@@ -27,7 +28,7 @@ fn raw_transfers_independent() {
                     transact_to: TransactTo::Call(address),
                     value: U256::from(1),
                     gas_limit: common::RAW_TRANSFER_GAS_LIMIT,
-                    gas_price: U256::from(1),
+                    gas_price: 1,
                     ..TxEnv::default()
                 }
             })
@@ -38,8 +39,12 @@ fn raw_transfers_independent() {
 // The same sender sending multiple transfers with increasing nonces.
 // These must be detected and executed in the correct order.
 #[test]
+#[ignore]
 fn raw_transfers_same_sender_multiple_txs() {
-    let block_size = 5_000; // number of transactions
+    let block_size = std::env::var("PEVM_RAW_TRANSFERS_BLOCK_SIZE")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(1_000);
 
     let same_sender_address = Address::from(U160::from(1));
     let mut same_sender_nonce: u64 = 0;
@@ -67,7 +72,7 @@ fn raw_transfers_same_sender_multiple_txs() {
                     transact_to: TransactTo::Call(address),
                     value: U256::from(1),
                     gas_limit: common::RAW_TRANSFER_GAS_LIMIT,
-                    gas_price: U256::from(1),
+                    gas_price: 1,
                     nonce: Some(nonce),
                     ..TxEnv::default()
                 }

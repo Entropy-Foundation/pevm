@@ -3,9 +3,10 @@
 /// This module provides ERC-20 contract functionality.
 pub mod contract;
 
+use alloy_primitives::{Address, U256};
 use contract::ERC20Token;
-use pevm::{Bytecodes, ChainState, EvmAccount};
-use revm::primitives::{uint, Address, TransactTo, TxEnv, U256};
+use pevm::{Bytecodes, ChainState, EvmAccount, TransactTo, TxEnv};
+use revm::primitives::uint;
 
 /// The maximum amount of gas that can be used for a transaction in this configuration.
 pub const GAS_LIMIT: u64 = 35_000;
@@ -61,7 +62,7 @@ pub fn generate_cluster(
                 txs.push(TxEnv {
                     caller: *person,
                     gas_limit: GAS_LIMIT,
-                    gas_price: U256::from(0xb2d05e07u64),
+                    gas_price: 0xb2d0_5e07u128,
                     transact_to: TransactTo::Call(gld_address),
                     data: calldata,
                     nonce: Some(nonce as u64),

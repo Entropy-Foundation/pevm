@@ -3,32 +3,13 @@
 use std::error::Error as StdError;
 use std::fmt::Debug;
 
-use alloy_consensus::{Signed, TxLegacy};
+use alloy_consensus::{transaction::Recovered, Signed, TxLegacy};
 use alloy_primitives::{Address, B256};
 use alloy_rpc_types_eth::{BlockTransactions, Header, Transaction};
-use revm::{
-    primitives::{BlockEnv, SpecId, TxEnv},
-    Handler,
-};
+use revm::context::BlockEnv;
+use revm::primitives::hardfork::SpecId;
 
-use crate::{mv_memory::MvMemory, PevmTxExecutionResult};
-
-/// Different chains may have varying reward policies.
-/// This enum specifies which policy to follow, with optional
-/// pre-calculated data to assist in reward calculations.
-#[derive(Debug, Clone)]
-pub enum RewardPolicy {
-    /// Ethereum
-    Ethereum,
-    /// Optimism
-    #[cfg(feature = "optimism")]
-    Optimism {
-        /// L1 Fee Recipient
-        l1_fee_recipient_location_hash: crate::MemoryLocationHash,
-        /// Base Fee Vault
-        base_fee_vault_location_hash: crate::MemoryLocationHash,
-    },
-}
+use crate::{mv_memory::MvMemory, PevmTxExecutionResult, TxEnv};
 
 /// The error type of [`PevmChain::calculate_receipt_root`]
 #[derive(Debug, Clone)]
@@ -65,8 +46,7 @@ pub trait PevmChain: Debug {
     /// Mock RPC transaction for testing.
     fn mock_rpc_tx(envelope: Self::Envelope, from: Address) -> Transaction<Self::Envelope> {
         Transaction {
-            inner: envelope,
-            from,
+            inner: Recovered::new_unchecked(envelope, from),
             block_hash: None,
             block_number: None,
             transaction_index: None,
@@ -87,16 +67,6 @@ pub trait PevmChain: Debug {
     fn build_mv_memory(&self, _block_env: &BlockEnv, txs: &[TxEnv]) -> MvMemory {
         MvMemory::new(txs.len(), [], [])
     }
-
-    /// Get [Handler]
-    fn get_handler<'a, EXT, DB: revm::Database>(
-        &self,
-        spec_id: SpecId,
-        with_reward_beneficiary: bool,
-    ) -> Handler<'a, revm::Context<EXT, DB>, EXT, DB>;
-
-    /// Get [`RewardPolicy`]
-    fn get_reward_policy(&self) -> RewardPolicy;
 
     /// Calculate receipt root
     fn calculate_receipt_root(

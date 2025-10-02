@@ -8,16 +8,16 @@ use op_alloy_consensus::{
 };
 use op_alloy_network::eip2718::Encodable2718;
 use revm::{
-    primitives::{AuthorizationList, BlockEnv, OptimismFields, SpecId, TxEnv},
-    Handler,
+    context::BlockEnv,
+    primitives::{hardfork::SpecId, OptimismFields},
 };
 
 use crate::{
     hash_deterministic, mv_memory::MvMemory, BuildIdentityHasher, MemoryLocation,
-    PevmTxExecutionResult,
+    PevmTxExecutionResult, TxEnv,
 };
 
-use super::{CalculateReceiptRootError, PevmChain, RewardPolicy};
+use super::{CalculateReceiptRootError, PevmChain};
 
 /// Implementation of [`PevmChain`] for Optimism
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -123,7 +123,7 @@ impl PevmChain for PevmOptimism {
 
     fn build_mv_memory(&self, block_env: &BlockEnv, txs: &[TxEnv]) -> MvMemory {
         let beneficiary_location_hash =
-            hash_deterministic(MemoryLocation::Basic(block_env.coinbase));
+            hash_deterministic(MemoryLocation::Basic(block_env.beneficiary));
         let l1_fee_recipient_location_hash = hash_deterministic(revm::L1_FEE_RECIPIENT);
         let base_fee_recipient_location_hash = hash_deterministic(revm::BASE_FEE_RECIPIENT);
 
@@ -153,30 +153,11 @@ impl PevmChain for PevmOptimism {
             txs.len(),
             estimated_locations,
             [
-                block_env.coinbase,
+                block_env.beneficiary,
                 revm::L1_FEE_RECIPIENT,
                 revm::BASE_FEE_RECIPIENT,
             ],
         )
-    }
-
-    fn get_handler<'a, EXT, DB: revm::Database>(
-        &self,
-        spec_id: SpecId,
-        with_reward_beneficiary: bool,
-    ) -> Handler<'a, revm::Context<EXT, DB>, EXT, DB> {
-        Handler::optimism_with_spec(spec_id, with_reward_beneficiary)
-    }
-
-    fn get_reward_policy(&self) -> RewardPolicy {
-        RewardPolicy::Optimism {
-            l1_fee_recipient_location_hash: hash_deterministic(MemoryLocation::Basic(
-                revm::optimism::L1_FEE_RECIPIENT,
-            )),
-            base_fee_vault_location_hash: hash_deterministic(MemoryLocation::Basic(
-                revm::optimism::BASE_FEE_RECIPIENT,
-            )),
-        }
     }
 
     // Refer to section 4.3.2. Holistic Validity in the Ethereum Yellow Paper.
@@ -247,7 +228,8 @@ impl PevmChain for PevmOptimism {
             max_fee_per_blob_gas: tx.max_fee_per_blob_gas().map(U256::from),
             authorization_list: tx
                 .authorization_list()
-                .map(|auths| AuthorizationList::Signed(auths.to_vec())),
+                .map(|auths| auths.to_vec())
+                .unwrap_or_default(),
         })
     }
 

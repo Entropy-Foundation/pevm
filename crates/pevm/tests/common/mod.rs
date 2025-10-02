@@ -29,7 +29,7 @@ pub const RAW_TRANSFER_GAS_LIMIT: u64 = 21_000;
 
 // TODO: Put somewhere better?
 /// Iterates over blocks stored on disk and processes each block using the provided handler.
-pub fn for_each_block_from_disk(mut handler: impl FnMut(Block, InMemoryStorage)) {
+pub fn for_each_block_from_disk(mut handler: impl FnMut(Block, InMemoryStorage) -> bool) {
     let data_dir = std::path::PathBuf::from("../../data");
 
     // TODO: Deduplicate logic with [bin/fetch.rs] when there is more usage
@@ -60,10 +60,13 @@ pub fn for_each_block_from_disk(mut handler: impl FnMut(Block, InMemoryStorage))
         )
         .unwrap();
 
-        handler(
+        let should_continue = handler(
             block,
             InMemoryStorage::new(accounts, Arc::clone(&bytecodes), Arc::clone(&block_hashes)),
         );
+        if !should_continue {
+            break;
+        }
     }
 }
 

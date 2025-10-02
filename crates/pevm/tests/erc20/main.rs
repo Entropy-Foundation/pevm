@@ -8,11 +8,11 @@ pub mod common;
 #[path = "./mod.rs"]
 pub mod erc20;
 
+use alloy_primitives::Address;
 use common::test_execute_revm;
 use erc20::generate_cluster;
 use pevm::chain::PevmEthereum;
-use pevm::{Bytecodes, ChainState, EvmAccount, InMemoryStorage};
-use revm::primitives::{Address, TxEnv};
+use pevm::{Bytecodes, ChainState, EvmAccount, InMemoryStorage, TxEnv};
 use std::sync::Arc;
 
 #[test]

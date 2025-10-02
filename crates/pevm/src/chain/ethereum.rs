@@ -1,19 +1,19 @@
 //! Ethereum
 
 use alloy_consensus::{ReceiptEnvelope, Transaction, TxEnvelope, TxType};
-use alloy_primitives::{Address, B256, U256};
+use alloy_primitives::{Address, B256};
 use alloy_provider::network::eip2718::Encodable2718;
 use alloy_rpc_types_eth::{BlockTransactions, Header};
 use hashbrown::HashMap;
-use revm::{
-    primitives::{AuthorizationList, BlockEnv, SpecId, TxEnv},
-    Handler,
-};
+use revm::context::BlockEnv;
+use revm::primitives::hardfork::SpecId;
+#[cfg(feature = "optimism")]
+use revm::primitives::OptimismFields;
 
-use super::{CalculateReceiptRootError, PevmChain, RewardPolicy};
+use super::{CalculateReceiptRootError, PevmChain};
 use crate::{
     hash_deterministic, mv_memory::MvMemory, BuildIdentityHasher, MemoryLocation,
-    PevmTxExecutionResult, TxIdx,
+    PevmTxExecutionResult, TransactTo, TxEnv, TxIdx,
 };
 
 /// Implementation of [`PevmChain`] for Ethereum
@@ -37,15 +37,16 @@ pub enum EthereumTransactionParsingError {
     /// [`tx.gas_price`] is none.
     #[error("Missing gas price")]
     MissingGasPrice,
+    #[error("Value overflow: {0}")]
+    ValueOverflow(&'static str),
 }
 
-fn get_ethereum_gas_price(tx: &TxEnvelope) -> Result<U256, EthereumTransactionParsingError> {
+fn get_ethereum_gas_price(tx: &TxEnvelope) -> Result<u128, EthereumTransactionParsingError> {
     match tx.tx_type() {
         TxType::Legacy | TxType::Eip2930 => tx
             .gas_price()
-            .map(U256::from)
             .ok_or(EthereumTransactionParsingError::MissingGasPrice),
-        TxType::Eip1559 | TxType::Eip4844 | TxType::Eip7702 => Ok(U256::from(tx.max_fee_per_gas())),
+        TxType::Eip1559 | TxType::Eip4844 | TxType::Eip7702 => Ok(tx.max_fee_per_gas()),
     }
 }
 
@@ -104,31 +105,47 @@ impl PevmChain for PevmEthereum {
     // https://github.com/paradigmxyz/reth/blob/280aaaedc4699c14a5b6e88f25d929fe22642fa3/crates/primitives/src/alloy_compat.rs#L112-L233
     // TODO: Properly test this.
     fn get_tx_env(&self, tx: &Self::Transaction) -> Result<TxEnv, EthereumTransactionParsingError> {
+        let recovered = tx.inner.clone();
+        let caller = recovered.signer();
+        let envelope = recovered.into_inner();
+
+        let transact_to = match envelope.to() {
+            Some(address) => TransactTo::Call(address),
+            None => TransactTo::Create,
+        };
+
+        let max_fee_per_blob_gas = envelope.max_fee_per_blob_gas();
+        let gas_priority_fee = envelope.max_priority_fee_per_gas();
+
         Ok(TxEnv {
-            caller: tx.from,
-            gas_limit: tx.gas_limit(),
-            gas_price: get_ethereum_gas_price(&tx.inner)?,
-            gas_priority_fee: tx.max_priority_fee_per_gas().map(U256::from),
-            transact_to: tx.kind(),
-            value: tx.value(),
-            data: tx.input().clone(),
-            nonce: Some(tx.nonce()),
-            chain_id: tx.chain_id(),
-            access_list: tx.access_list().cloned().unwrap_or_default().to_vec(),
-            blob_hashes: tx.blob_versioned_hashes().unwrap_or_default().to_vec(),
-            max_fee_per_blob_gas: tx.max_fee_per_blob_gas().map(U256::from),
-            authorization_list: tx
+            tx_type: envelope.tx_type() as u8,
+            caller,
+            gas_limit: envelope.gas_limit(),
+            gas_price: get_ethereum_gas_price(&envelope)?,
+            gas_priority_fee,
+            transact_to,
+            value: envelope.value(),
+            data: envelope.input().clone(),
+            nonce: Some(envelope.nonce()),
+            chain_id: envelope.chain_id(),
+            access_list: envelope.access_list().cloned().unwrap_or_default(),
+            blob_versioned_hashes: envelope
+                .blob_versioned_hashes()
+                .map_or_else(Vec::new, |hashes| hashes.to_vec()),
+            max_fee_per_blob_gas,
+            authorization_list: envelope
                 .authorization_list()
-                .map(|auths| AuthorizationList::Signed(auths.to_vec())),
+                .map(|auths| auths.to_vec())
+                .unwrap_or_default(),
             #[cfg(feature = "optimism")]
-            optimism: revm::primitives::OptimismFields::default(),
+            optimism: OptimismFields::default(),
         })
     }
 
     fn build_mv_memory(&self, block_env: &BlockEnv, txs: &[TxEnv]) -> MvMemory {
         let block_size = txs.len();
         let beneficiary_location_hash =
-            hash_deterministic(MemoryLocation::Basic(block_env.coinbase));
+            hash_deterministic(MemoryLocation::Basic(block_env.beneficiary));
 
         // TODO: Estimate more locations based on sender, to, etc.
         let mut estimated_locations = HashMap::with_hasher(BuildIdentityHasher::default());
@@ -137,19 +154,7 @@ impl PevmChain for PevmEthereum {
             (0..block_size).collect::<Vec<TxIdx>>(),
         );
 
-        MvMemory::new(block_size, estimated_locations, [block_env.coinbase])
-    }
-
-    fn get_handler<'a, EXT, DB: revm::Database>(
-        &self,
-        spec_id: SpecId,
-        with_reward_beneficiary: bool,
-    ) -> Handler<'a, revm::Context<EXT, DB>, EXT, DB> {
-        Handler::mainnet_with_spec(spec_id, with_reward_beneficiary)
-    }
-
-    fn get_reward_policy(&self) -> RewardPolicy {
-        RewardPolicy::Ethereum
+        MvMemory::new(block_size, estimated_locations, [block_env.beneficiary])
     }
 
     // Refer to section 4.3.2. Holistic Validity in the Ethereum Yellow Paper.

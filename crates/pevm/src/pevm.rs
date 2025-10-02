@@ -9,9 +9,13 @@ use alloy_primitives::{TxNonce, U256};
 use alloy_rpc_types_eth::{Block, BlockTransactions};
 use hashbrown::HashMap;
 use revm::{
-    db::CacheDB,
-    primitives::{BlockEnv, InvalidTransaction, SpecId, TxEnv},
-    DatabaseCommit,
+    context::BlockEnv,
+    context_interface::{journaled_state::JournalTr, result::InvalidTransaction, ContextTr},
+    database::CacheDB,
+    database_interface::DatabaseCommit,
+    handler::EvmTr,
+    primitives::hardfork::SpecId,
+    ExecuteEvm,
 };
 
 use crate::{
@@ -24,7 +28,7 @@ use crate::{
     vm::{
         build_evm, ExecutionError, PevmTxExecutionResult, Vm, VmExecutionError, VmExecutionResult,
     },
-    EvmAccount, MemoryEntry, MemoryLocation, MemoryValue, Storage, Task, TxIdx, TxVersion,
+    EvmAccount, MemoryEntry, MemoryLocation, MemoryValue, Storage, Task, TxEnv, TxIdx, TxVersion,
 };
 
 /// Errors when executing a block with pevm.
@@ -301,7 +305,7 @@ impl Pevm {
                             // Ideally we would share these calculations with revm
                             // (using their utility functions).
                             let mut max_fee = U256::from(tx.gas_limit)
-                                .saturating_mul(tx.gas_price)
+                                .saturating_mul(U256::from(tx.gas_price))
                                 .saturating_add(tx.value);
                             if let Some(blob_fee) = tx.max_fee_per_blob_gas {
                                 max_fee = max_fee.saturating_add(
@@ -450,18 +454,19 @@ pub fn execute_revm_sequential<S: Storage, C: PevmChain>(
     txs: Vec<TxEnv>,
 ) -> PevmResult<C> {
     let mut db = CacheDB::new(StorageWrapper(storage));
-    let mut evm = build_evm(&mut db, chain, spec_id, block_env, None, true);
+    let mut evm = build_evm(&mut db, chain, spec_id, block_env, None);
     let mut results = Vec::with_capacity(txs.len());
     let mut cumulative_gas_used: u64 = 0;
     for tx in txs {
-        *evm.tx_mut() = tx;
-
         // TODO: More concrete type for `EVMError<StorageWrapperError<S>>`
         let result_and_state = evm
-            .transact()
+            .transact(tx.as_revm())
             .map_err(|err| ExecutionError::Custom(err.to_string()))?;
 
-        evm.db_mut().commit(result_and_state.state.clone());
+        evm.ctx()
+            .journal()
+            .db()
+            .commit(result_and_state.state.clone());
 
         let mut execution_result =
             PevmTxExecutionResult::from_revm(chain, spec_id, result_and_state);
