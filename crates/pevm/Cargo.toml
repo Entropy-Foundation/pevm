@@ -68,6 +68,7 @@ rayon.workspace = true
 reqwest.workspace = true
 revme.workspace = true
 serde_json.workspace = true
+tokio = { workspace = true, features = ["macros"] }
 walkdir.workspace = true
 
 [lints]

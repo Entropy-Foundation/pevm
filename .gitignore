@@ -1,3 +1,5 @@
 .vscode
 /target
 perf.*
+cachedir.tag
+Cargo.lock
