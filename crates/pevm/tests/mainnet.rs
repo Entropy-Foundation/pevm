@@ -48,24 +48,13 @@ async fn mainnet_blocks_from_rpc() {
 }
 
 #[test]
-#[ignore]
 fn mainnet_blocks_from_disk() {
-    let limit = std::env::var("PEVM_MAINNET_DISK_LIMIT")
-        .ok()
-        .and_then(|value| value.parse::<usize>().ok())
-        .unwrap_or(3);
-
-    let mut processed = 0usize;
     common::for_each_block_from_disk(|block, storage| {
-        if processed >= limit {
-            return false;
-        }
         // Run several times to try catching a race condition if there is any.
         // 1000~2000 is a better choice for local testing after major changes.
         for _ in 0..3 {
-            common::test_execute_alloy(&PevmEthereum::mainnet(), &storage, block.clone(), true)
+            common::test_execute_alloy(&PevmEthereum::mainnet(), &storage, block.clone(), true);
         }
-        processed += 1;
         true
     });
 }

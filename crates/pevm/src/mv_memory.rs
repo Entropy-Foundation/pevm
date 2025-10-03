@@ -49,23 +49,41 @@ impl MvMemory {
     ) -> Self {
         // TODO: Fine-tune the number of shards, like to the next number of two from the
         // number of worker threads.
+        let estimated_locations: Vec<(MemoryLocationHash, Vec<TxIdx>)> =
+            estimated_locations.into_iter().collect();
         let data = DashMap::default();
         // We preallocate estimated locations to avoid restructuring trees at runtime
         // while holding a write lock. Ideally [dashmap] would have a lock-free
         // construction API. This is acceptable for now as it's a non-congested one-time
         // cost.
-        for (location_hash, estimated_tx_idxs) in estimated_locations {
+        for (location_hash, estimated_tx_idxs) in &estimated_locations {
             data.insert(
-                location_hash,
+                *location_hash,
                 estimated_tx_idxs
                     .into_iter()
-                    .map(|tx_idx| (tx_idx, MemoryEntry::Estimate))
+                    .map(|tx_idx| (*tx_idx, MemoryEntry::Estimate))
                     .collect(),
             );
         }
+        let last_locations: Vec<Mutex<LastLocations>> =
+            (0..block_size).map(|_| Mutex::default()).collect();
+        for (location_hash, estimated_tx_idxs) in estimated_locations {
+            for tx_idx in estimated_tx_idxs {
+                if tx_idx < block_size {
+                    let mut tx_locations = last_locations
+                        .get(tx_idx)
+                        .expect("tx_idx must be within block size")
+                        .lock()
+                        .unwrap();
+                    if !tx_locations.write.contains(&location_hash) {
+                        tx_locations.write.push(location_hash);
+                    }
+                }
+            }
+        }
         Self {
             data,
-            last_locations: (0..block_size).map(|_| Mutex::default()).collect(),
+            last_locations,
             lazy_addresses: Mutex::new(LazyAddresses::from_iter(lazy_addresses)),
             // TODO: Fine-tune the number of shards, like to the next number of two from the
             // number of worker threads.

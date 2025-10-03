@@ -203,8 +203,8 @@ impl Pevm {
             for _ in 0..concurrency_level.into() {
                 scope.spawn(|| {
                     let mut task = scheduler.next_task();
-                    while task.is_some() {
-                        task = match task.unwrap() {
+                    while let Some(current_task) = task {
+                        task = match current_task {
                             Task::Execution(tx_version) => {
                                 self.try_execute(&vm, &scheduler, tx_version)
                             }

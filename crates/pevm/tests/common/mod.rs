@@ -31,7 +31,6 @@ pub const RAW_TRANSFER_GAS_LIMIT: u64 = 21_000;
 /// Iterates over blocks stored on disk and processes each block using the provided handler.
 pub fn for_each_block_from_disk(mut handler: impl FnMut(Block, InMemoryStorage) -> bool) {
     let data_dir = std::path::PathBuf::from("../../data");
-
     // TODO: Deduplicate logic with [bin/fetch.rs] when there is more usage
     let bytecodes = bincode::deserialize_from(GzDecoder::new(BufReader::new(
         File::open(data_dir.join("bytecodes.bincode.gz")).unwrap(),
