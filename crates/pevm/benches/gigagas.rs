@@ -8,9 +8,10 @@ use alloy_primitives::{Address, U160, U256};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use pevm::{
     chain::PevmEthereum, execute_revm_sequential, Bytecodes, ChainState, EvmAccount,
-    InMemoryStorage, Pevm,
+    InMemoryStorage, Pevm, TransactTo, TxEnv,
 };
-use revm::primitives::{BlockEnv, SpecId, TransactTo, TxEnv};
+use revm::context::BlockEnv;
+use revm::primitives::hardfork::SpecId;
 
 // Better project structure
 
@@ -93,7 +94,7 @@ pub fn bench_raw_transfers(c: &mut Criterion) {
                     transact_to: TransactTo::Call(address),
                     value: U256::from(1),
                     gas_limit: common::RAW_TRANSFER_GAS_LIMIT,
-                    gas_price: U256::from(1),
+                    gas_price: 1,
                     ..TxEnv::default()
                 }
             })

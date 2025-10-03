@@ -3,3 +3,4 @@
 perf.*
 Cargo.lock
 cachedir.tag
+.DS_Store
