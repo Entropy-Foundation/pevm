@@ -288,7 +288,7 @@ impl<S: Storage, C: PevmChain> Database for VmDb<'_, S, C> {
                 loop {
                     match iter.next_back() {
                         Some((blocking_idx, MemoryEntry::Estimate)) => {
-                            return Err(ReadError::Blocking(*blocking_idx))
+                            return Err(ReadError::Blocking(*blocking_idx));
                         }
                         Some((closest_idx, MemoryEntry::Data(tx_incarnation, value))) => {
                             // About to push a new origin
@@ -471,7 +471,9 @@ impl<S: Storage, C: PevmChain> Database for VmDb<'_, S, C> {
                             )?;
                             return Ok(*value);
                         }
-                        MemoryEntry::Estimate => return Err(ReadError::Blocking(*closest_idx)),
+                        MemoryEntry::Estimate => {
+                            return Err(ReadError::Blocking(*closest_idx));
+                        }
                         _ => return Err(ReadError::InvalidMemoryValueType),
                     }
                 }
@@ -599,29 +601,26 @@ impl<'a, S: Storage, C: PevmChain> Vm<'a, S, C> {
                                     || basic.balance != account.info.balance
                             })
                         {
+                            let mut handled_lazy = false;
                             if db.is_lazy {
                                 if account_location_hash == from_hash {
                                     write_set.push((
                                         account_location_hash,
                                         MemoryValue::LazySender(U256::MAX - account.info.balance),
                                     ));
+                                    handled_lazy = true;
                                 } else if Some(account_location_hash) == to_hash {
                                     write_set.push((
                                         account_location_hash,
                                         MemoryValue::LazyRecipient(tx.value),
                                     ));
+                                    handled_lazy = true;
                                 }
                             }
-                            // We don't register empty accounts after [SPURIOUS_DRAGON]
-                            // as they are cleared. This can only happen via 2 ways:
-                            // 1. Self-destruction which is handled by an if above.
-                            // 2. Sending 0 ETH to an empty account, which we treat as a
-                            // non-write here. A later read would trace back to storage
-                            // and return a [None], i.e., [LoadedAsNotExisting]. Without
-                            // this check it would write then read a [Some] default
-                            // account, which may yield a wrong gas fee, etc.
-                            else if !self.chain.is_eip_161_enabled(self.spec_id)
-                                || !account.is_empty()
+
+                            if !handled_lazy
+                                && (!self.chain.is_eip_161_enabled(self.spec_id)
+                                    || !account.is_empty())
                             {
                                 write_set.push((
                                     account_location_hash,

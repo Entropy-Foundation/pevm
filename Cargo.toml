@@ -46,20 +46,20 @@ unnested_or_patterns = "warn"
 use_self = "warn"
 
 [workspace.dependencies]
-revm = { path = "vendor/revm/crates/revm", features = ["serde"] }
+revm = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", features = ["serde"] }
 pevm = { path = "crates/pevm", features = ["full"] }
-primitives = { path = "vendor/revm/crates/primitives", package = "revm-primitives", default-features = false }
-bytecode = { path = "vendor/revm/crates/bytecode", package = "revm-bytecode", default-features = false }
-database = { path = "vendor/revm/crates/database", package = "revm-database", default-features = false }
-database-interface = { path = "vendor/revm/crates/database/interface", package = "revm-database-interface", default-features = false }
-state = { path = "vendor/revm/crates/state", package = "revm-state", default-features = false }
-interpreter = { path = "vendor/revm/crates/interpreter", package = "revm-interpreter", default-features = false }
-inspector = { path = "vendor/revm/crates/inspector", package = "revm-inspector", default-features = false }
-precompile = { path = "vendor/revm/crates/precompile", package = "revm-precompile", default-features = false }
-statetest-types = { path = "vendor/revm/crates/statetest-types", package = "revm-statetest-types", default-features = false }
-context = { path = "vendor/revm/crates/context", package = "revm-context", default-features = false }
-context-interface = { path = "vendor/revm/crates/context/interface", package = "revm-context-interface", default-features = false }
-handler = { path = "vendor/revm/crates/handler", package = "revm-handler", default-features = false }
+primitives = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-primitives", default-features = false }
+bytecode = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-bytecode", default-features = false }
+database = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-database", default-features = false }
+database-interface = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-database-interface", default-features = false }
+state = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-state", default-features = false }
+interpreter = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-interpreter", default-features = false }
+inspector = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-inspector", default-features = false }
+precompile = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-precompile", default-features = false }
+statetest-types = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-statetest-types", default-features = false }
+context = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-context", default-features = false }
+context-interface = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-context-interface", default-features = false }
+handler = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20", package = "revm-handler", default-features = false }
 paste = "1.0"
 phf = { version = "0.11", default-features = false }
 auto_impl = "1.2.0"
@@ -105,7 +105,7 @@ alloy-transport = "0.12.4"
 alloy-transport-http = "0.12.4"
 alloy-trie = "0.7.8"
 
-revme = { path = "vendor/revm/bins/revme" }
+revme = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v20" }
 
 # OP
 op-alloy-consensus = "0.9.2"
@@ -137,3 +137,8 @@ smallvec = "1.13.2"
 thiserror = "2.0.10"
 tokio = { version = "1.43.0", features = ["rt-multi-thread"] }
 walkdir = "2.5.0"
+
+[patch.crates-io]
+alloy-consensus = { git = "https://github.com/davidsupra/alloy", branch = "pevm-v20" }
+alloy-eips = { git = "https://github.com/davidsupra/alloy", branch = "pevm-v20" }
+alloy-serde = { git = "https://github.com/davidsupra/alloy", branch = "pevm-v20" }

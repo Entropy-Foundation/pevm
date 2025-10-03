@@ -39,7 +39,6 @@ fn raw_transfers_independent() {
 // The same sender sending multiple transfers with increasing nonces.
 // These must be detected and executed in the correct order.
 #[test]
-#[ignore]
 fn raw_transfers_same_sender_multiple_txs() {
     let block_size = std::env::var("PEVM_RAW_TRANSFERS_BLOCK_SIZE")
         .ok()
