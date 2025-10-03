@@ -35,14 +35,14 @@ where
     let sequential = pevm::execute_revm_sequential(
         chain,
         &storage,
-        SpecId::LATEST,
+        SpecId::PRAGUE,
         BlockEnv::default(),
         txs.clone(),
     );
     let parallel = Pevm::default().execute_revm_parallel(
         chain,
         &storage,
-        SpecId::LATEST,
+        SpecId::PRAGUE,
         BlockEnv::default(),
         txs,
         concurrency_level,
