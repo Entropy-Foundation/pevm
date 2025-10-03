@@ -9,7 +9,7 @@ use hashbrown::HashMap;
 use revm::{
     bytecode::{
         eip7702::{Eip7702Bytecode, EIP7702_MAGIC_BYTES},
-        eof, Bytecode, Eof, JumpTable,
+        eof, Bytecode, Eof, JumpTable, LegacyRawBytecode,
     },
     database_interface::{DBErrorMarker, DatabaseRef},
     primitives::KECCAK_EMPTY,
@@ -146,11 +146,14 @@ impl TryFrom<EvmCode> for Bytecode {
 impl From<Bytecode> for EvmCode {
     fn from(code: Bytecode) -> Self {
         match code {
-            Bytecode::LegacyAnalyzed(code) => Self::Legacy(LegacyCode {
-                bytecode: code.bytecode,
-                original_len: code.original_len,
-                jump_table: code.jump_table.0,
-            }),
+            Bytecode::LegacyAnalyzed(code) => {
+                let analyzed = LegacyRawBytecode(code.original_bytes()).into_analyzed();
+                Self::Legacy(LegacyCode {
+                    bytecode: analyzed.bytecode,
+                    original_len: analyzed.original_len,
+                    jump_table: analyzed.jump_table.0,
+                })
+            }
             Bytecode::Eip7702(code) => Self::Eip7702(Eip7702Code {
                 delegated_address: code.delegated_address,
                 version: code.version,
@@ -317,7 +320,7 @@ mod tests {
 
     // Bytecode from revm test code.
     // https://github.com/bluealloy/revm/blob/925c042ad748695bc45e516dfd2457e7b44cd3a8/crates/bytecode/src/eof.rs#L210
-    const EOF_BYTECODE: Bytes = bytes!("ef000101000402000100010400000000800000fe");
+    const EOF_BYTECODE: Bytes = bytes!("ef00010100040200010001ff00000000800000fe");
 
     fn eq_bytecodes(revm_code: &Bytecode, pevm_code: &EvmCode) -> bool {
         match (revm_code, pevm_code) {

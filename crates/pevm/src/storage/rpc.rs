@@ -1,21 +1,23 @@
 use std::{
     fmt::Debug,
     future::{Future, IntoFuture},
+    marker::PhantomData,
     sync::{Mutex, OnceLock},
     time::Duration,
 };
 
-use alloy_primitives::{Address, B256, U256};
-use alloy_provider::{network::BlockResponse, Network, Provider, RootProvider};
+use alloy_primitives::{Address, Bytes, B256, U256};
+use alloy_provider::{
+    network::{primitives::HeaderResponse, BlockResponse},
+    Network, Provider, RootProvider,
+};
 use alloy_rpc_types_eth::{BlockId, BlockNumberOrTag, BlockTransactionsKind};
 use alloy_transport::TransportError;
-use alloy_transport_http::Http;
 use hashbrown::HashMap;
-use op_alloy_network::primitives::HeaderResponse;
-use reqwest::Client;
 use revm::{
+    bytecode::Bytecode,
     precompile::{PrecompileSpecId, Precompiles},
-    primitives::{Bytecode, SpecId},
+    primitives::hardfork::SpecId,
 };
 use tokio::{
     runtime::{Handle, Runtime},
@@ -26,12 +28,10 @@ use crate::{AccountBasic, EvmAccount, Storage};
 
 use super::{BlockHashes, Bytecodes, ChainState, EvmCode};
 
-type RpcProvider<N> = RootProvider<Http<Client>, N>;
-
 /// A storage that fetches state data via RPC for execution.
 #[derive(Debug)]
-pub struct RpcStorage<N: Network> {
-    provider: RpcProvider<N>,
+pub struct RpcStorage<N: Network, P: Provider<N> = RootProvider<N>> {
+    provider: P,
     block_id: BlockId,
     precompiles: &'static Precompiles,
     /// `OnceLock` is used to lazy-initialize a Tokio multi-threaded runtime if no
@@ -49,11 +49,12 @@ pub struct RpcStorage<N: Network> {
     cache_accounts: Mutex<ChainState>,
     cache_bytecodes: Mutex<Bytecodes>,
     cache_block_hashes: Mutex<BlockHashes>,
+    _marker: PhantomData<fn() -> N>,
 }
 
-impl<N: Network> RpcStorage<N> {
+impl<N: Network, P: Provider<N>> RpcStorage<N, P> {
     /// Create a new RPC Storage
-    pub fn new(provider: RpcProvider<N>, spec_id: SpecId, block_id: BlockId) -> Self {
+    pub fn new(provider: P, spec_id: SpecId, block_id: BlockId) -> Self {
         Self {
             provider,
             precompiles: Precompiles::new(PrecompileSpecId::from_spec_id(spec_id)),
@@ -62,6 +63,7 @@ impl<N: Network> RpcStorage<N> {
             cache_accounts: Mutex::default(),
             cache_bytecodes: Mutex::default(),
             cache_block_hashes: Mutex::default(),
+            _marker: PhantomData,
         }
     }
 
@@ -118,7 +120,7 @@ impl<N: Network> RpcStorage<N> {
     }
 }
 
-impl<N: Network> Storage for RpcStorage<N> {
+impl<N: Network, P: Provider<N>> Storage for RpcStorage<N, P> {
     type Error = TransportError;
 
     fn basic(&self, address: &Address) -> Result<Option<AccountBasic>, Self::Error> {
@@ -129,7 +131,11 @@ impl<N: Network> Storage for RpcStorage<N> {
             }));
         }
 
-        let (nonce, balance, code) = self.block_on(async {
+        let (nonce, balance, code): (
+            Result<u64, TransportError>,
+            Result<U256, TransportError>,
+            Result<Bytes, TransportError>,
+        ) = self.block_on(async {
             tokio::join!(
                 self.fetch(|| {
                     self.provider
@@ -235,10 +241,9 @@ impl<N: Network> Storage for RpcStorage<N> {
 
         let block_hash = self
             .block_on(self.fetch(|| {
-                self.provider.get_block_by_number(
-                    BlockNumberOrTag::Number(*number),
-                    BlockTransactionsKind::Hashes,
-                )
+                self.provider
+                    .get_block_by_number(BlockNumberOrTag::Number(*number))
+                    .kind(BlockTransactionsKind::Hashes)
             }))
             .map(|block| block.unwrap().header().hash())?;
 

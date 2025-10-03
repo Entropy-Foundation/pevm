@@ -1,6 +1,7 @@
 use alloy_eip2930::AccessList;
 use alloy_eip7702::SignedAuthorization;
 use alloy_primitives::{Address, Bytes, B256, U256};
+use revm::context::either::Either;
 use revm::context::TxEnv as RevmTxEnv;
 #[cfg(feature = "optimism")]
 use revm::primitives::OptimismFields;
@@ -114,7 +115,12 @@ impl From<&TxEnv> for RevmTxEnv {
         tx.access_list = env.access_list.clone();
         tx.blob_hashes = env.blob_versioned_hashes.clone();
         tx.max_fee_per_blob_gas = env.max_fee_per_blob_gas.unwrap_or_default();
-        tx.authorization_list = env.authorization_list.clone();
+        tx.authorization_list = env
+            .authorization_list
+            .iter()
+            .cloned()
+            .map(Either::Left)
+            .collect();
         #[cfg(feature = "optimism")]
         {
             tx.optimism = env.optimism.clone();

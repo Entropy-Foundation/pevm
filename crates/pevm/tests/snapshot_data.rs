@@ -1,7 +1,7 @@
 //! Test if snapshotted mainnet data is correct
 
 use alloy_primitives::B256;
-use alloy_provider::{Provider, ProviderBuilder};
+use alloy_provider::{network::Ethereum, Provider, RootProvider};
 use alloy_rpc_types_eth::BlockNumberOrTag;
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -17,7 +17,9 @@ async fn snapshotted_mainnet_block_hashes() {
         _ => reqwest::Url::parse("https://eth-mainnet.public.blastapi.io").unwrap(),
     };
 
-    let provider = ProviderBuilder::new().connect_http(rpc_url);
+    let provider = RootProvider::<Ethereum>::connect(rpc_url.as_str())
+        .await
+        .unwrap();
 
     for (block_number, snapshotted_hash) in block_hashes {
         let block = provider

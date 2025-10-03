@@ -8,8 +8,8 @@ use std::{
 
 use alloy_consensus::constants::KECCAK_EMPTY;
 use alloy_primitives::{Address, B256};
-use alloy_provider::{Provider, ProviderBuilder};
-use alloy_rpc_types_eth::{BlockId, BlockTransactionsKind};
+use alloy_provider::{network::Ethereum, Provider, RootProvider};
+use alloy_rpc_types_eth::BlockId;
 use clap::Parser;
 use color_eyre::eyre::{eyre, Result, WrapErr};
 use flate2::{bufread::GzDecoder, write::GzEncoder, Compression};
@@ -35,11 +35,14 @@ async fn main() -> Result<()> {
     let Fetch { block_id, rpc_url } = Fetch::parse();
 
     // Define provider.
-    let provider = ProviderBuilder::new().on_http(rpc_url);
+    let provider = RootProvider::<Ethereum>::connect(rpc_url.as_str())
+        .await
+        .context("Failed to connect to provider")?;
 
     // Retrieve block from provider.
     let block = provider
-        .get_block(block_id, BlockTransactionsKind::Full)
+        .get_block(block_id)
+        .full()
         .await
         .context("Failed to fetch block from provider")?
         .ok_or_else(|| eyre!("No block found for ID: {block_id:?}"))?;

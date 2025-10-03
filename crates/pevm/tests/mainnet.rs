@@ -7,8 +7,8 @@ pub mod common;
 #[tokio::test(flavor = "multi_thread")]
 #[cfg(feature = "rpc-storage")]
 async fn mainnet_blocks_from_rpc() {
-    use alloy_provider::{Provider, ProviderBuilder};
-    use alloy_rpc_types_eth::{BlockId, BlockTransactionsKind};
+    use alloy_provider::{network::Ethereum, Provider, RootProvider};
+    use alloy_rpc_types_eth::BlockId;
     use pevm::chain::PevmChain;
 
     let rpc_url = match std::env::var("ETHEREUM_RPC_URL") {
@@ -33,9 +33,12 @@ async fn mainnet_blocks_from_rpc() {
                // 17035010, // SHANGHAI
                // 19426587, // CANCUN
     ] {
-        let provider = ProviderBuilder::new().on_http(rpc_url.clone());
+        let provider = RootProvider::<Ethereum>::connect(rpc_url.as_str())
+            .await
+            .unwrap();
         let block = provider
-            .get_block(BlockId::number(block_number), BlockTransactionsKind::Full)
+            .get_block(BlockId::number(block_number))
+            .full()
             .await
             .unwrap()
             .unwrap();
@@ -62,8 +65,8 @@ fn mainnet_blocks_from_disk() {
 #[tokio::test(flavor = "multi_thread")]
 #[cfg(all(feature = "rpc-storage", feature = "optimism"))]
 async fn optimism_mainnet_blocks_from_rpc() {
-    use alloy_provider::{Provider, ProviderBuilder};
-    use alloy_rpc_types_eth::{BlockId, BlockTransactionsKind};
+    use alloy_provider::{Provider, RootProvider};
+    use alloy_rpc_types_eth::BlockId;
     use pevm::chain::{PevmChain, PevmOptimism};
 
     let rpc_url = match std::env::var("OPTIMISM_RPC_URL") {
@@ -79,11 +82,12 @@ async fn optimism_mainnet_blocks_from_rpc() {
                   // 122874325, // FJORD (https://specs.optimism.io/protocol/fjord/overview.html)
                   // 125874340, // GRANITE (https://specs.optimism.io/protocol/granite/overview.html)
     ] {
-        let provider = ProviderBuilder::new()
-            .network::<op_alloy_network::Optimism>()
-            .on_http(rpc_url.clone());
+        let provider = RootProvider::<op_alloy_network::Optimism>::connect(rpc_url.as_str())
+            .await
+            .unwrap();
         let block = provider
-            .get_block(BlockId::number(block_number), BlockTransactionsKind::Full)
+            .get_block(BlockId::number(block_number))
+            .full()
             .await
             .unwrap()
             .unwrap();

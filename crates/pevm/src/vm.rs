@@ -638,10 +638,12 @@ impl<'a, S: Storage, C: PevmChain> Vm<'a, S, C> {
                                 hash_deterministic(MemoryLocation::CodeHash(*address)),
                                 MemoryValue::CodeHash(account.info.code_hash),
                             ));
+                            let canonical_code =
+                                Self::canonicalize_bytecode(account.info.code.as_ref().unwrap());
                             self.mv_memory
                                 .new_bytecodes
                                 .entry(account.info.code_hash)
-                                .or_insert_with(|| account.info.code.clone().unwrap());
+                                .or_insert_with(|| canonical_code);
                         }
                     }
 
@@ -700,6 +702,13 @@ impl<'a, S: Storage, C: PevmChain> Vm<'a, S, C> {
                     Err(VmExecutionError::ExecutionError(err))
                 }
             }
+        }
+    }
+    fn canonicalize_bytecode(code: &Bytecode) -> Bytecode {
+        match code {
+            Bytecode::LegacyAnalyzed(legacy) => Bytecode::new_legacy(legacy.original_bytes()),
+            Bytecode::Eip7702(eip7702) => Bytecode::Eip7702(eip7702.clone()),
+            Bytecode::Eof(eof) => Bytecode::Eof(eof.clone()),
         }
     }
 }
