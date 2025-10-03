@@ -20,7 +20,11 @@ use revm::context_interface::block::{calc_excess_blob_gas, BlobExcessGasAndPrice
 use revm::context_interface::result::InvalidTransaction;
 use revm::database::PlainAccount;
 use revm::primitives::ruint::ParseError;
-use revm::primitives::{hardfork::SpecId, KECCAK_EMPTY, U256};
+use revm::primitives::{
+    eip4844::{BLOB_BASE_FEE_UPDATE_FRACTION_CANCUN, BLOB_BASE_FEE_UPDATE_FRACTION_PRAGUE},
+    hardfork::SpecId,
+    KECCAK_EMPTY, U256,
+};
 use revm::state::{AccountInfo, Bytecode};
 use revme::cmd::statetest::{
     merkle_trie::{log_rlp_hash, state_merkle_trie_root},
@@ -37,6 +41,12 @@ use walkdir::{DirEntry, WalkDir};
 pub mod common;
 
 fn build_block_env(env: &Env, spec_id: SpecId) -> BlockEnv {
+    let blob_base_fee_update_fraction = if spec_id.is_enabled_in(SpecId::OSAKA) {
+        BLOB_BASE_FEE_UPDATE_FRACTION_PRAGUE
+    } else {
+        BLOB_BASE_FEE_UPDATE_FRACTION_CANCUN
+    };
+
     BlockEnv {
         number: env.current_number.saturating_to(),
         beneficiary: env.current_coinbase,
@@ -50,7 +60,7 @@ fn build_block_env(env: &Env, spec_id: SpecId) -> BlockEnv {
         {
             Some(BlobExcessGasAndPrice::new(
                 current_excess_blob_gas.to(),
-                spec_id.is_enabled_in(SpecId::PRAGUE),
+                blob_base_fee_update_fraction,
             ))
         } else if let (Some(parent_blob_gas_used), Some(parent_excess_blob_gas)) =
             (env.parent_blob_gas_used, env.parent_excess_blob_gas)
@@ -64,7 +74,7 @@ fn build_block_env(env: &Env, spec_id: SpecId) -> BlockEnv {
                         // https://github.com/bluealloy/revm/blob/a2451cdb30bd9d9aaca95f13bd50e2eafb619d8f/crates/specification/src/eip4844.rs#L23
                         .unwrap_or(3 * (1 << 17)),
                 ),
-                spec_id.is_enabled_in(SpecId::PRAGUE),
+                blob_base_fee_update_fraction,
             ))
         } else {
             None

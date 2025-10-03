@@ -9,7 +9,7 @@ use hashbrown::HashMap;
 use revm::{
     bytecode::{
         eip7702::{Eip7702Bytecode, EIP7702_MAGIC_BYTES},
-        eof, Bytecode, Eof, JumpTable, LegacyRawBytecode,
+        Bytecode, JumpTable, LegacyRawBytecode,
     },
     database_interface::{DBErrorMarker, DatabaseRef},
     primitives::KECCAK_EMPTY,
@@ -105,14 +105,14 @@ pub enum EvmCode {
     Legacy(LegacyCode),
     /// Maps delegated EIP7702 bytecode.
     Eip7702(Eip7702Code),
-    /// Maps EOF bytecode.
+    /// Maps EOF bytecode. Currently unsupported by REVM.
     Eof(Bytes),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum BytecodeConversionError {
-    #[error("Failed to decode EOF")]
-    EofDecodingError(#[source] eof::EofDecodeError),
+    #[error("EOF bytecode is not supported by the current REVM build")]
+    UnsupportedEof,
 }
 
 impl TryFrom<EvmCode> for Bytecode {
@@ -121,9 +121,9 @@ impl TryFrom<EvmCode> for Bytecode {
     fn try_from(code: EvmCode) -> Result<Self, Self::Error> {
         match code {
             EvmCode::Legacy(code) => Ok(Self::new_analyzed(
-                code.bytecode,
+                code.bytecode.clone(),
                 code.original_len,
-                JumpTable(code.jump_table),
+                jump_table_from_bitvec(&code.jump_table),
             )),
             EvmCode::Eip7702(code) => {
                 let mut raw = EIP7702_MAGIC_BYTES.to_vec();
@@ -135,10 +135,7 @@ impl TryFrom<EvmCode> for Bytecode {
                     raw: raw.into(),
                 }))
             }
-            EvmCode::Eof(code) => Eof::decode(code)
-                .map(Arc::new)
-                .map(Self::Eof)
-                .map_err(Self::Error::EofDecodingError),
+            EvmCode::Eof(_) => Err(BytecodeConversionError::UnsupportedEof),
         }
     }
 }
@@ -151,16 +148,29 @@ impl From<Bytecode> for EvmCode {
                 Self::Legacy(LegacyCode {
                     bytecode: analyzed.bytecode,
                     original_len: analyzed.original_len,
-                    jump_table: analyzed.jump_table.0,
+                    jump_table: jump_table_to_bitvec_arc(&analyzed.jump_table),
                 })
             }
             Bytecode::Eip7702(code) => Self::Eip7702(Eip7702Code {
                 delegated_address: code.delegated_address,
                 version: code.version,
             }),
-            Bytecode::Eof(code) => Self::Eof(Arc::unwrap_or_clone(code).raw),
         }
     }
+}
+
+fn jump_table_from_bitvec(bits: &Arc<BitVec<u8>>) -> JumpTable {
+    JumpTable::from_slice(bits.as_raw_slice(), bits.len())
+}
+
+fn jump_table_to_bitvec(jump_table: &JumpTable) -> BitVec<u8> {
+    let mut bitvec = BitVec::from_vec(jump_table.as_slice().to_vec());
+    bitvec.truncate(jump_table.len());
+    bitvec
+}
+
+fn jump_table_to_bitvec_arc(jump_table: &JumpTable) -> Arc<BitVec<u8>> {
+    Arc::new(jump_table_to_bitvec(jump_table))
 }
 
 /// Mapping from address to [`EvmAccount`]
@@ -310,7 +320,7 @@ pub use rpc::RpcStorage;
 #[cfg(test)]
 mod tests {
     use alloy_primitives::{bytes, Bytes};
-    use revm::bytecode::{eip7702::EIP7702_VERSION, eof::EofDecodeError};
+    use revm::bytecode::eip7702::EIP7702_VERSION;
 
     use super::*;
 
@@ -318,21 +328,16 @@ mod tests {
     // https://github.com/foundry-rs/foundry/blob/nightly-fe2acca4e379793539db80e032d76ffe0110298b/testdata/multi-version/Counter.sol
     const BYTECODE: Bytes = bytes!("608060405234801561001057600080fd5b5060f78061001f6000396000f3fe6080604052348015600f57600080fd5b5060043610603c5760003560e01c80633fb5c1cb1460415780638381f58a146053578063d09de08a14606d575b600080fd5b6051604c3660046083565b600055565b005b605b60005481565b60405190815260200160405180910390f35b6051600080549080607c83609b565b9190505550565b600060208284031215609457600080fd5b5035919050565b60006001820160ba57634e487b7160e01b600052601160045260246000fd5b506001019056fea264697066735822122012c25f3d90606133b37330bf079a425dbc650fd21060dee49f715d37d97cb58f64736f6c634300080d0033");
 
-    // Bytecode from revm test code.
-    // https://github.com/bluealloy/revm/blob/925c042ad748695bc45e516dfd2457e7b44cd3a8/crates/bytecode/src/eof.rs#L210
-    const EOF_BYTECODE: Bytes = bytes!("ef00010100040200010001ff00000000800000fe");
-
     fn eq_bytecodes(revm_code: &Bytecode, pevm_code: &EvmCode) -> bool {
         match (revm_code, pevm_code) {
             (Bytecode::LegacyAnalyzed(revm), EvmCode::Legacy(pevm)) => {
                 revm.bytecode == pevm.bytecode
                     && revm.original_len == pevm.original_len
-                    && revm.jump_table.0 == pevm.jump_table
+                    && super::jump_table_to_bitvec(&revm.jump_table) == **pevm.jump_table
             }
             (Bytecode::Eip7702(revm), EvmCode::Eip7702(pevm)) => {
                 revm.delegated_address == pevm.delegated_address && revm.version == pevm.version
             }
-            (Bytecode::Eof(revm), EvmCode::Eof(pevm)) => revm.raw == pevm.0,
             _ => false,
         }
     }
@@ -383,29 +388,10 @@ mod tests {
     }
 
     #[test]
-    fn eof_bytecodes() {
-        let bytecode = Bytecode::Eof(Arc::new(Eof::decode(EOF_BYTECODE).unwrap()));
-        let evm_code = EvmCode::from(bytecode.clone());
-        assert!(eq_bytecodes(&bytecode, &evm_code));
-        assert_eq!(bytecode, evm_code.try_into().unwrap());
-    }
-
-    #[test]
-    fn eof_bytecodes_error() {
-        assert_eq!(
+    fn eof_bytecodes_unsupported() {
+        assert!(matches!(
             Bytecode::try_from(EvmCode::Eof(Bytes::new())),
-            Err(BytecodeConversionError::EofDecodingError(
-                EofDecodeError::MissingInput
-            ))
-        );
-
-        let mut eof_dangling = EOF_BYTECODE.to_vec();
-        eof_dangling.extend(bytes!("010203"));
-        assert_eq!(
-            Bytecode::try_from(EvmCode::Eof(eof_dangling.into())),
-            Err(BytecodeConversionError::EofDecodingError(
-                EofDecodeError::DanglingData
-            ))
-        );
+            Err(BytecodeConversionError::UnsupportedEof)
+        ));
     }
 }

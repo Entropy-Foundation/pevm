@@ -46,23 +46,23 @@ unnested_or_patterns = "warn"
 use_self = "warn"
 
 [workspace.dependencies]
-revm = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", features = ["serde"] }
+revm = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", features = ["serde"] }
 pevm = { path = "crates/pevm", features = ["full"] }
-primitives = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-primitives", default-features = false }
-bytecode = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-bytecode", default-features = false }
-database = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-database", default-features = false }
-database-interface = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-database-interface", default-features = false }
-state = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-state", default-features = false }
-interpreter = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-interpreter", default-features = false }
-inspector = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-inspector", default-features = false }
-precompile = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-precompile", default-features = false }
-statetest-types = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-statetest-types", default-features = false }
-context = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-context", default-features = false }
-context-interface = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-context-interface", default-features = false }
-handler = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-handler", default-features = false }
+primitives = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-primitives", default-features = false }
+bytecode = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-bytecode", default-features = false }
+database = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-database", default-features = false }
+database-interface = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-database-interface", default-features = false }
+state = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-state", default-features = false }
+interpreter = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-interpreter", default-features = false }
+inspector = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-inspector", default-features = false }
+precompile = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-precompile", default-features = false }
+statetest-types = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-statetest-types", default-features = false }
+context = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-context", default-features = false }
+context-interface = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-context-interface", default-features = false }
+handler = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26", package = "revm-handler", default-features = false }
 paste = "1.0"
 phf = { version = "0.11", default-features = false }
-auto_impl = "1.2.0"
+auto_impl = "1.3.0"
 derive-where = { version = "1.2.7", default-features = false }
 enumn = "0.1"
 once_cell = { version = "1.19", default-features = false }
@@ -105,7 +105,7 @@ alloy-transport = { version = "1.0.6", default-features = false }
 alloy-transport-http = "1.0.6"
 alloy-trie = "0.8.1"
 
-revme = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24" }
+revme = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v26" }
 
 # OP
 op-alloy-consensus = "0.20.0"
@@ -119,11 +119,11 @@ tikv-jemallocator = "0.6.0"
 
 bincode = "1.3"
 # We can roll our own but [revm] depends on this anyway.
-bitflags = "2.6.0"
-bitvec = "1"
+bitflags = { version = "2.6.0", default-features = false }
+bitvec = { version = "1", default-features = false }
 clap = { version = "4", features = ["derive"] }
 color-eyre = "0.6.3"
-criterion = { package = "codspeed-criterion-compat", version = "2.7" }
+criterion = { package = "codspeed-criterion-compat", version = "2.10" }
 dashmap = "6.1.0"
 flate2 = "1.0.35"
 hashbrown = { version = "0.15.2", features = ["serde"] }

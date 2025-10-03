@@ -464,8 +464,8 @@ pub fn execute_revm_sequential<S: Storage, C: PevmChain>(
             .map_err(|err| ExecutionError::Custom(err.to_string()))?;
 
         evm.ctx()
-            .journal()
-            .db()
+            .journal_mut()
+            .db_mut()
             .commit(result_and_state.state.clone());
 
         let mut execution_result =

@@ -45,8 +45,9 @@ impl PevmTxExecutionResult {
     pub fn from_revm<C: PevmChain>(
         chain: &C,
         spec_id: SpecId,
-        ResultAndState { result, state }: ResultAndState,
+        result_and_state: ResultAndState,
     ) -> Self {
+        let ResultAndState { result, state } = result_and_state;
         Self {
             receipt: Receipt {
                 status: result.is_success().into(),
@@ -708,7 +709,6 @@ impl<'a, S: Storage, C: PevmChain> Vm<'a, S, C> {
         match code {
             Bytecode::LegacyAnalyzed(legacy) => Bytecode::new_legacy(legacy.original_bytes()),
             Bytecode::Eip7702(eip7702) => Bytecode::Eip7702(eip7702.clone()),
-            Bytecode::Eof(eof) => Bytecode::Eof(eof.clone()),
         }
     }
 }
