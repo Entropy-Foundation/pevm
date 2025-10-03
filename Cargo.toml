@@ -46,20 +46,20 @@ unnested_or_patterns = "warn"
 use_self = "warn"
 
 [workspace.dependencies]
-revm = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", features = ["serde"] }
+revm = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", features = ["serde"] }
 pevm = { path = "crates/pevm", features = ["full"] }
-primitives = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-primitives", default-features = false }
-bytecode = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-bytecode", default-features = false }
-database = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-database", default-features = false }
-database-interface = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-database-interface", default-features = false }
-state = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-state", default-features = false }
-interpreter = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-interpreter", default-features = false }
-inspector = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-inspector", default-features = false }
-precompile = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-precompile", default-features = false }
-statetest-types = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-statetest-types", default-features = false }
-context = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-context", default-features = false }
-context-interface = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-context-interface", default-features = false }
-handler = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23", package = "revm-handler", default-features = false }
+primitives = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-primitives", default-features = false }
+bytecode = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-bytecode", default-features = false }
+database = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-database", default-features = false }
+database-interface = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-database-interface", default-features = false }
+state = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-state", default-features = false }
+interpreter = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-interpreter", default-features = false }
+inspector = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-inspector", default-features = false }
+precompile = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-precompile", default-features = false }
+statetest-types = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-statetest-types", default-features = false }
+context = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-context", default-features = false }
+context-interface = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-context-interface", default-features = false }
+handler = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24", package = "revm-handler", default-features = false }
 paste = "1.0"
 phf = { version = "0.11", default-features = false }
 auto_impl = "1.2.0"
@@ -78,7 +78,7 @@ sha2 = { version = "0.10", default-features = false }
 ripemd = { version = "0.1", default-features = false }
 p256 = { version = "0.13.2", default-features = false }
 cfg-if = { version = "1.0", default-features = false }
-alloy-sol-types = { version = "1.0.0", default-features = false }
+alloy-sol-types = { version = "1.1.2", default-features = false }
 anyhow = "1.0.89"
 eyre = "0.6.12"
 hash-db = "0.15"
@@ -86,26 +86,26 @@ indicatif = "0.17"
 microbench = "0.5"
 plain_hasher = "0.2"
 rstest = "0.24.0"
-serde_derive = "=1.0.219"
+serde_derive = "1.0"
 triehash = "0.8"
 
 # alloy
 alloy-chains = "0.2.0"
-alloy-consensus = { version = "0.14.0", default-features = false }
-alloy-primitives = { version = "1.0.0", default-features = false, features = ["asm-keccak", "map-fxhash"] }
-alloy-provider = { version = "0.14.0", default-features = false, features = ["reqwest"] }
-alloy-rlp = { version = "0.3", default-features = false }
-alloy-rpc-types-eth = "0.14.0"
-alloy-eip2930 = { version = "0.2.0", default-features = false }
-alloy-eip7702 = { version = "0.6.0", default-features = false }
-alloy-eips = { version = "0.14.0", default-features = false }
-alloy-signer = { version = "0.14.0", default-features = false }
-alloy-signer-local = { version = "0.14.0", default-features = false }
-alloy-transport = { version = "0.14.0", default-features = false }
-alloy-transport-http = "0.14.0"
+alloy-consensus = { version = "1.0.6", default-features = false }
+alloy-primitives = { version = "1.1.2", default-features = false, features = ["asm-keccak", "map-fxhash"] }
+alloy-provider = { version = "1.0.6", default-features = false, features = ["reqwest"] }
+alloy-rlp = { version = "0.3.12", default-features = false }
+alloy-rpc-types-eth = "1.0.6"
+alloy-eip2930 = { version = "0.2.1", default-features = false }
+alloy-eip7702 = { version = "0.6.1", default-features = false }
+alloy-eips = { version = "1.0.0", default-features = false }
+alloy-signer = { version = "1.0.6", default-features = false }
+alloy-signer-local = { version = "1.0.6", default-features = false }
+alloy-transport = { version = "1.0.6", default-features = false }
+alloy-transport-http = "1.0.6"
 alloy-trie = "0.8.1"
 
-revme = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v23" }
+revme = { git = "https://github.com/Entropy-Foundation/revm", branch = "pevm-v24" }
 
 # OP
 op-alloy-consensus = "0.20.0"
@@ -131,8 +131,8 @@ rand = "0.8"
 rayon = "1.10.0"
 reqwest = "0.12.15"
 rustc-hash = "2.1.0"
-serde = "=1.0.219"
-serde_json = "=1.0.140"
+serde = { version = "1.0", default-features = false }
+serde_json = { version = "1.0", default-features = false }
 smallvec = "1.13.2"
 thiserror = "2.0"
 tokio = { version = "1.44", features = ["rt-multi-thread"] }
