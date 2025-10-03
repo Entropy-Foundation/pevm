@@ -7,7 +7,7 @@ use std::{
 };
 
 use alloy_consensus::{Signed, TxLegacy};
-use alloy_primitives::{Address, Bytes, PrimitiveSignature, TxKind, B256, U256};
+use alloy_primitives::{Address, Bytes, Signature, TxKind, B256, U256};
 use alloy_rpc_types_eth::{Block, BlockTransactions, Header};
 use flate2::bufread::GzDecoder;
 use hashbrown::HashMap;
@@ -100,7 +100,7 @@ where
                                 value: U256::from(1),
                                 input: Bytes::default(),
                             },
-                            PrimitiveSignature::new(U256::ZERO, U256::ZERO, false),
+                            Signature::new(U256::ZERO, U256::ZERO, false),
                             B256::default(),
                         )
                         .into(),
