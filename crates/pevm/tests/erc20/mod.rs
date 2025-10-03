@@ -6,6 +6,7 @@ pub mod contract;
 use alloy_primitives::{Address, U256};
 use contract::ERC20Token;
 use pevm::{Bytecodes, ChainState, EvmAccount, TransactTo, TxEnv};
+use rand::Rng;
 use revm::primitives::uint;
 
 /// The maximum amount of gas that can be used for a transaction in this configuration.
@@ -19,7 +20,8 @@ pub const ESTIMATED_GAS_USED: u64 = 29_738;
 /// dependent transactions, sometimes we want to guarantee non-duplicates
 /// for independent benchmarks.
 fn generate_addresses(length: usize) -> Vec<Address> {
-    (0..length).map(|_| Address::new(rand::random())).collect()
+    let mut rng = rand::rng();
+    (0..length).map(|_| Address::new(rng.random())).collect()
 }
 
 /// Generates a cluster of blockchain transactions for testing or simulation purposes.
@@ -34,7 +36,9 @@ pub fn generate_cluster(
 
     let people_addresses: Vec<Address> = families.clone().into_iter().flatten().collect();
 
-    let gld_address = Address::new(rand::random());
+    let mut rng = rand::rng();
+
+    let gld_address = Address::new(rng.random());
 
     let gld_account = ERC20Token::new("Gold Token", "GLD", 18, 222_222_000_000_000_000_000_000u128)
         .add_balances(&people_addresses, uint!(1_000_000_000_000_000_000_U256))
@@ -56,8 +60,8 @@ pub fn generate_cluster(
     for nonce in 0..num_transfers_per_person {
         for family in &families {
             for person in family {
-                let recipient = family[(rand::random::<usize>()) % (family.len())];
-                let calldata = ERC20Token::transfer(recipient, U256::from(rand::random::<u8>()));
+                let recipient = family[rng.random_range(0..family.len())];
+                let calldata = ERC20Token::transfer(recipient, U256::from(rng.random::<u8>()));
 
                 txs.push(TxEnv {
                     caller: *person,

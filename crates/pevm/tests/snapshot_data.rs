@@ -3,13 +3,14 @@
 use alloy_primitives::B256;
 use alloy_provider::{network::Ethereum, Provider, RootProvider};
 use alloy_rpc_types_eth::BlockNumberOrTag;
-use std::collections::BTreeMap;
-use std::fs::File;
+use std::{collections::BTreeMap, fs::File, io::BufReader};
 
 #[tokio::test]
 async fn snapshotted_mainnet_block_hashes() {
     let file = File::open("../../data/block_hashes.bincode").unwrap();
-    let block_hashes = bincode::deserialize_from::<_, BTreeMap<u64, B256>>(file).unwrap();
+    let mut reader = BufReader::new(file);
+    let block_hashes: BTreeMap<u64, B256> =
+        bincode::serde::decode_from_std_read(&mut reader, bincode::config::legacy()).unwrap();
 
     let rpc_url = match std::env::var("ETHEREUM_RPC_URL") {
         // The empty check is for GitHub Actions where the variable is set with an empty string when unset!?
@@ -28,6 +29,6 @@ async fn snapshotted_mainnet_block_hashes() {
             .unwrap()
             .unwrap();
 
-        assert_eq!(snapshotted_hash, block.header.hash);
+        assert_eq!(snapshotted_hash, B256::from(block.header.hash));
     }
 }

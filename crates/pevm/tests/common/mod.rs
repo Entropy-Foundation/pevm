@@ -12,7 +12,8 @@ use alloy_rpc_types_eth::{Block, BlockTransactions, Header};
 use flate2::bufread::GzDecoder;
 use hashbrown::HashMap;
 use pevm::{
-    chain::PevmChain, BlockHashes, BuildSuffixHasher, ChainState, EvmAccount, InMemoryStorage,
+    chain::PevmChain, BlockHashes, BuildSuffixHasher, Bytecodes, ChainState, EvmAccount,
+    InMemoryStorage,
 };
 
 /// runner module
@@ -32,17 +33,21 @@ pub const RAW_TRANSFER_GAS_LIMIT: u64 = 21_000;
 pub fn for_each_block_from_disk(mut handler: impl FnMut(Block, InMemoryStorage) -> bool) {
     let data_dir = std::path::PathBuf::from("../../data");
     // TODO: Deduplicate logic with [bin/fetch.rs] when there is more usage
-    let bytecodes = bincode::deserialize_from(GzDecoder::new(BufReader::new(
-        File::open(data_dir.join("bytecodes.bincode.gz")).unwrap(),
-    )))
-    .map(Arc::new)
-    .unwrap();
+    let bytecodes = {
+        let mut reader = GzDecoder::new(BufReader::new(
+            File::open(data_dir.join("bytecodes.bincode.gz")).unwrap(),
+        ));
+        let decoded: Bytecodes =
+            bincode::serde::decode_from_std_read(&mut reader, bincode::config::legacy()).unwrap();
+        Arc::new(decoded)
+    };
 
-    let block_hashes = bincode::deserialize_from::<_, BlockHashes>(BufReader::new(
-        File::open(data_dir.join("block_hashes.bincode")).unwrap(),
-    ))
-    .map(Arc::new)
-    .unwrap();
+    let block_hashes = {
+        let mut reader = BufReader::new(File::open(data_dir.join("block_hashes.bincode")).unwrap());
+        let decoded: BlockHashes =
+            bincode::serde::decode_from_std_read(&mut reader, bincode::config::legacy()).unwrap();
+        Arc::new(decoded)
+    };
 
     for block_path in fs::read_dir(data_dir.join("blocks")).unwrap() {
         let block_dir = block_path.unwrap().path();
