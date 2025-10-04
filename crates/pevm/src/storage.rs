@@ -109,9 +109,11 @@ pub enum EvmCode {
     Eof(Bytes),
 }
 
+/// Errors returned when converting [`EvmCode`] into REVM's [`Bytecode`].
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum BytecodeConversionError {
     #[error("EOF bytecode is not supported by the current REVM build")]
+    /// Encountered EOF bytecode, which the current REVM build cannot handle.
     UnsupportedEof,
 }
 
