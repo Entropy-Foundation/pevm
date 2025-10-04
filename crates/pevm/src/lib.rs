@@ -214,17 +214,19 @@ macro_rules! index_mutex {
     };
 }
 
+pub use alloy_consensus::Receipt;
 pub mod chain;
 mod compat;
 mod mv_memory;
+pub use mv_memory::MvMemory;
 mod pevm;
 mod tx_env;
 pub use pevm::{execute_revm_sequential, Pevm, PevmError, PevmResult};
 mod scheduler;
 mod storage;
 pub use storage::{
-    AccountBasic, BlockHashes, Bytecodes, ChainState, EvmAccount, EvmCode, InMemoryStorage,
-    Storage, StorageWrapper,
+    AccountBasic, BlockHashes, BytecodeConversionError, Bytecodes, ChainState, EvmAccount, EvmCode,
+    InMemoryStorage, Storage, StorageWrapper,
 };
 mod vm;
 pub use tx_env::{TransactTo, TxEnv};
